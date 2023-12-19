@@ -1,4 +1,5 @@
 # CSC8502-Advanced Graphics For Games-Coursework
+❗Work In Progress ❗
 ## Description
 This GitHub repository contains the coursework project completed for the Graphics Programming module. 
 The goal of the coursework was to develop a C++ program using OpenGL that renders a dynamic space scene. 
