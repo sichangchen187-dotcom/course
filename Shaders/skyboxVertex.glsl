@@ -1,3 +1,4 @@
+
 #version 330 core
 
 uniform mat4 modelMatrix;
@@ -17,3 +18,5 @@ void main(void) {
     OUT.viewDir = transpose(mat3(viewMatrix)) * normalize(pos);
     gl_Position = vec4(position, 1.0);
 }
+
+

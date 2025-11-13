@@ -19,36 +19,22 @@ namespace {
 	constexpr const int SHADOW_SIZE = 2048;
 	constexpr const int POST_PASSES = 10;
 
-	//TODO(eren.degirmenci): add planet data
-	const std::map<std::string, SpaceObjectParams> spaceObjectsDataMap = {
-		{"planet_venus", SpaceObjectParams(Vector3(250, 250, 0),Vector3(15, 15, 15), Vector4(1,1,1,1),TEXTUREDIR"venus_surface.tga")},
-		{"planet_mercury", SpaceObjectParams(Vector3(-40000, 500, -3000),Vector3(750, 750, 750),Vector4(1,1,1,1), TEXTUREDIR"mercury_surface.jpg")},
-		{"sun", SpaceObjectParams(Vector3(-20000, 0, 0),Vector3(3500, 3500, 3500), Vector4(1,1,1,.9f), TEXTUREDIR"sun_surface.jpg")},
-		{"mars", SpaceObjectParams(Vector3(-10000, 300, 1400),Vector3(1200, 1200, 1200),Vector4(1,1,1,1), TEXTUREDIR"mars_surface.jpg")}
-	};
-
-	const std::vector<std::string> cubePaths = {
-	TEXTUREDIR"bkg1_right.png", TEXTUREDIR"bkg1_left.png",
-	TEXTUREDIR"bkg1_top.png", TEXTUREDIR"bkg1_bot.png",
-	TEXTUREDIR"bkg1_front.png", TEXTUREDIR"bkg1_back.png"
-	};
-
 	const std::vector<std::string> planetCubeMapPaths = {
-		TEXTUREDIR"rusted_west.jpg", TEXTUREDIR"rusted_east.jpg",
-		TEXTUREDIR"rusted_up.jpg", TEXTUREDIR"rusted_down.jpg",
-		TEXTUREDIR"rusted_south.jpg", TEXTUREDIR"rusted_north.jpg",
+	TEXTUREDIR"posx.jpg", // +X (right)
+	TEXTUREDIR"negx.jpg", // -X (left)
+	TEXTUREDIR"posy.jpg", // +Y (top)
+	TEXTUREDIR"negy.jpg", // -Y (bottom)
+	TEXTUREDIR"posz.jpg", // +Z (front)
+	TEXTUREDIR"negz.jpg"  // -Z (back)
 	};
 
 	constexpr const char* SPHERE_MESH_FILE_NAME = "Sphere.msh";
 	constexpr const char* TREE_MESH_FILE_NAME = "Tree.msh";
-	constexpr const char* LANTERN_PLANT_MESH_FILE_NAME = "LanternPlant.msh";
 	constexpr const char* ANIMATED_CHARACTER_MESH_FILE_NAME = "Role_T.msh";
-	constexpr const char* LANTERN_PLANT_MEST_MATERIAL = "LanternPlant.mat";
 
 	constexpr const char* ANIMATED_CHARACTER_ANIMATION_FILE_NAME = "Role_T.anm";
 
 	constexpr const char* ANIMATED_CHARACTER_MATERIAL_FILE_NAME = "Role_T.mat";
-	constexpr const char* LANTERN_PLANT_MATERIAL_FILE_NAME = "LanternPlant.mat";
 	constexpr const char* NOISE_MAP_FILE_NAME = "islandNoise.jpg";
 
 	constexpr const char* SCENE_SHADER_VERTEX_FILE_NAME = "SceneVertex.glsl";
@@ -80,10 +66,10 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 
 	initCameraFollowNodes();
 
-	_camera = new Camera(.0f, 90.f, Vector3(812, 341, 2));
-	_camera->initAutoMovement(_spaceSceneCameraNodesToVisit, false, [=]() {
-		toggleScene();
-	});
+	_camera = new Camera(10.0f, 0.0f, Vector3(3859, 375, 4005));
+	_camera->initAutoMovement(_planetSceneCameraNodesToVisit, false, nullptr);
+	_sceneToggle = true; 
+
 
 	initMeshes();
 
@@ -117,9 +103,9 @@ Renderer::Renderer(Window& parent) : OGLRenderer(parent) {
 	SetTextureRepeating(_waterTex, true);
 	SetTextureRepeating(_bumpTexture, true);
 	InitGlobalSceneNode();
-	InitSpaceSceneNodes();
+	/*InitSpaceSceneNodes();*/
 	InitPlanetSceneNodes();
-	_currentSceneRoot = _spaceRoot;
+	_currentSceneRoot = _planetRoot;
 	_globalRoot->addChild(_currentSceneRoot);
 
 	projMatrix = Matrix4::Perspective(1.0f, 500000.f, (float)width / (float)height, 90.f);
@@ -136,10 +122,7 @@ void Renderer::initMeshes() {
 	_quad = Mesh::GenerateQuad();
 	_sphere = Mesh::LoadFromMeshFile(SPHERE_MESH_FILE_NAME);
 	_tree = Mesh::LoadFromMeshFile(TREE_MESH_FILE_NAME);
-	_lanternPlant = Mesh::LoadFromMeshFile(LANTERN_PLANT_MESH_FILE_NAME);
 	_animatedMesh = Mesh::LoadFromMeshFile(ANIMATED_CHARACTER_MESH_FILE_NAME);
-
-	_lanternPlantMeshMaterial = new MeshMaterial(LANTERN_PLANT_MEST_MATERIAL);
 	_animateMeshAnimation = new MeshAnimation(ANIMATED_CHARACTER_ANIMATION_FILE_NAME);
 	_animatedMeshMaterial = new MeshMaterial(ANIMATED_CHARACTER_MATERIAL_FILE_NAME);
 }
@@ -148,8 +131,7 @@ void Renderer::initTextures(){
 	_treeTexture = SOIL_load_OGL_texture(TEXTUREDIR"TreeDiffuse.png",
 		SOIL_LOAD_AUTO,
 		SOIL_CREATE_NEW_ID, 0);
-
-	_cubeMap = LoadCubeMap(cubePaths);
+	
 	_planetCubemap = LoadCubeMap(planetCubeMapPaths);
 
 	_heightMapTexture = SOIL_load_OGL_texture(TEXTUREDIR"Barren Reds.JPG", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
@@ -158,6 +140,7 @@ void Renderer::initTextures(){
 	_lowPolyTex = SOIL_load_OGL_texture(TEXTUREDIR"Colors3.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	_lowPolyBumpTex = SOIL_load_OGL_texture(TEXTUREDIR"Colors3DOT3.jpg", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	_treeBumpTex = SOIL_load_OGL_texture(TEXTUREDIR"TreeDOT3.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
+	_treeBumpTex = SOIL_load_OGL_texture(TEXTUREDIR"DOTTREE.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 	_rainTexture = SOIL_load_OGL_texture(TEXTUREDIR"rain.png", SOIL_LOAD_AUTO, SOIL_CREATE_NEW_ID, SOIL_FLAG_MIPMAPS);
 }
 
@@ -242,7 +225,7 @@ void Renderer::initCameraFollowNodes(){
 }
 
 Renderer::~Renderer() {
-	delete _spaceRoot;
+	/*delete _spaceRoot;*/
 	delete _planetRoot;
 	delete _quad;
 	delete _camera;
@@ -363,21 +346,6 @@ void Renderer::InitGlobalSceneNode() {
 	_globalRoot->setNodeName("global_node");
 }
 
-void Renderer::InitSpaceSceneNodes() {
-	_spaceRoot = new SceneNode();
-	_spaceRoot->setNodeName("space_root");
-
-	for (auto planetData : spaceObjectsDataMap) {
-		GLuint planetTexture = SOIL_load_OGL_texture(planetData.second._texturePath,
-			SOIL_LOAD_AUTO,
-			SOIL_CREATE_NEW_ID, 0);
-		auto* planet = new SpaceObject(_sphere, planetTexture, _perPixelSceneShader, planetData.second);
-		planet->setNodeName(planetData.first);
-		//planet->setBumpTexture(_bumpTexture);
-		//planet->setShadowTexture(_shadowTex);
-		_spaceRoot->addChild(planet);
-	}
-}
 
 void Renderer::InitPlanetSceneNodes() {
 	_planetRoot = new SceneNode();
@@ -387,7 +355,7 @@ void Renderer::InitPlanetSceneNodes() {
 	lightPos.y += 300.f;
 	_currentLight = new Light(Vector3(10000.f, 12000.f, -18000.f), Vector4(1, 1, 1, 1), 40000);
 
-	for (int i = 0; i < 70; i++) {
+	for (int i = 0; i < 200; i++) {
 		auto* treeNode = new SceneNode(_tree);
 		treeNode->setCamera(_camera);
 		treeNode->setLight(_currentLight);
@@ -395,23 +363,32 @@ void Renderer::InitPlanetSceneNodes() {
 		treeNode->setShader(_perPixelSceneShader);
 		treeNode->setColour(Vector4(1.0f, 1.0f, 1.0f, 1.0f));
 
-		float modelScale = 10.f * 100;
+		/*float modelScale = 10.f * 100;*/
+		float modelScale = 10.f * 100 + rand() % 150;  // 150~300 ·¶Î§
 		treeNode->setModelScale(Vector3(modelScale, modelScale, modelScale));
-		int xRange = 977 + std::rand() % (5484 - 977 + 1);//_heightMap->getHeightmapSize().x - startPosX + 1;
-		int zRange = 1183 + std::rand() % (4965 - 1183 + 1);//_heightMap->getHeightmapSize().x - startPosX + 1;
+
+		treeNode->setModelScale(Vector3(modelScale, modelScale, modelScale));
+		Vector3 mapSize = _heightMap->getHeightmapSize();
+		int xRange = rand() % (int)mapSize.x;
+		int zRange = rand() % (int)mapSize.z;
 		float xPos = (float)(xRange);
 		float zPos = (float)(zRange);
-		float yPos = _heightMap->getHeightmapSize().y + 30.f;
+		float yPos = _heightMap->getHeightmapSize().y + 200.f;
 
 		Vector3 treePos = Vector3(xPos, yPos, zPos);
-
-		treeNode->setTransform(Matrix4::Translation(treePos));
+		float rot = rand() % 360;
+		treeNode->setTransform(
+			Matrix4::Translation(Vector3(xPos, yPos, zPos)) *
+			Matrix4::Rotation(rot, Vector3(0, 1, 0))
+		);
+		/*treeNode->setTransform(Matrix4::Translation(treePos));*/
 		treeNode->setTexture(_treeTexture);
 		treeNode->setShadowTexture(_shadowTex);
 		treeNode->setBumpTexture(_treeBumpTex);
 		treeNode->setBoundingRadius(40.f);
 		treeNode->setNodeName("tree_node_" + i);
 		_planetRoot->addChild(treeNode);
+		
 	}
 
 	auto* animatedNode = new AnimatedSceneNode(_animatedMesh, _animateMeshAnimation, _animatedMeshMaterial);
@@ -438,7 +415,7 @@ void Renderer::InitPlanetSceneNodes() {
 	particleSpawnerNode->setBoundingRadius(1.f);
 	_planetRoot->addChild(particleSpawnerNode);
 
-	auto* lanternPlant = new SceneNode(_lanternPlant);
+	/*auto* lanternPlant = new SceneNode(_lanternPlant);
 	lanternPlant->setBumpTexture(_lowPolyBumpTex);
 	lanternPlant->setTexture(_lowPolyTex);
 	lanternPlant->setShadowTexture(_shadowTex);
@@ -447,7 +424,7 @@ void Renderer::InitPlanetSceneNodes() {
 	lanternPlant->setModelScale(Vector3(100, 100, 100));
 	lanternPlant->setTransform(Matrix4::Translation(Vector3(3416, 200, 5612)));
 	lanternPlant->setNodeName("lantern_plant_node");
-	_planetRoot->addChild(lanternPlant);
+	_planetRoot->addChild(lanternPlant);*/
 
 	m_planetSceneCameraPos = _heightMap->getHeightmapSize() * Vector3(.5f, 1.f, .5f);
 	m_planetSceneCameraPos.y += 100.f;
@@ -486,6 +463,7 @@ void Renderer::RenderScene() {
 		drawShadowScene();
 		drawWater();
 		drawHeightMap();
+		
 	}
 
 	drawNodes(false);
@@ -521,24 +499,26 @@ void Renderer::clearNodeLists() {
 }
 
 void Renderer::toggleScene() {
-	_sceneToggle = !_sceneToggle;
-	_globalRoot->removeChild(_currentSceneRoot);
-	if (_sceneToggle){
-		_currentSceneRoot = _planetRoot;
-		_camera->initAutoMovement(_planetSceneCameraNodesToVisit, false, [=]() {
-			toggleScene();
-		});
-	}
-	else
-	{
-		_currentSceneRoot = _spaceRoot;
-		_camera->initAutoMovement(_spaceSceneCameraNodesToVisit, false, [=]() {
-			toggleScene();
-		});
+
+	_sceneToggle = true;
+
+	
+	if (_currentSceneRoot) {
+		_globalRoot->removeChild(_currentSceneRoot);
 	}
 
+	
+	_currentSceneRoot = _planetRoot;
 	_globalRoot->addChild(_currentSceneRoot);
-	onChangeScene();
+
+	
+	if (_camera) {
+		_camera->initAutoMovement(
+			_planetSceneCameraNodesToVisit,   
+			false,                           
+			nullptr                           
+		);
+	}
 }
 
 void Renderer::onChangeScene() {
@@ -649,7 +629,6 @@ void Renderer::drawWater() {
 	BindShader(_reflectShader);
 
 	glUniform3fv(glGetUniformLocation(_reflectShader->GetProgram(), "cameraPos"), 1, (float*)&_camera->getPosition());
-
 	glUniform1i(glGetUniformLocation(_reflectShader->GetProgram(), "diffuseTex"), 0);
 	glUniform1i(glGetUniformLocation(_reflectShader->GetProgram(), "cubeTex"), 1);
 
@@ -661,27 +640,44 @@ void Renderer::drawWater() {
 
 	Vector3 hSize = _heightMap->getHeightmapSize();
 
-	modelMatrix = Matrix4::Translation(hSize * 0.5f - Vector3(0, 35.0f, 0)) * Matrix4::Scale(hSize) * Matrix4::Rotation(90, Vector3(1, 0, 0));
+	modelMatrix =
+		Matrix4::Translation(Vector3(hSize.x * 0.5f, hSize.y * 0.80f, hSize.z * 0.5f)) *
+		Matrix4::Scale(Vector3(hSize.x * 0.50f, 1.0f, hSize.z * 0.50f)) *  
+		Matrix4::Rotation(90, Vector3(1, 0, 0));
 
-	textureMatrix = Matrix4::Translation(Vector3(_waterCycle, 0.0f, _waterCycle)) *
-		Matrix4::Scale(Vector3(10, 10, 10)) * Matrix4::Rotation(_waterRotate, Vector3(0, 0, 1));
+	textureMatrix =
+		Matrix4::Translation(Vector3(_waterCycle, 0.0f, _waterCycle)) *
+		Matrix4::Scale(Vector3(10, 10, 10)) *
+		Matrix4::Rotation(_waterRotate, Vector3(0, 0, 1));
 
 	UpdateShaderMatrices();
 	_quad->Draw();
+
 	textureMatrix.ToIdentity();
 }
 
 void Renderer::drawSkybox() {
-
 	glDepthMask(GL_FALSE);
 	BindShader(_skyboxShader);
 	glUniform1i(glGetUniformLocation(_skyboxShader->GetProgram(), "cubeTex"), 1);
 	glActiveTexture(GL_TEXTURE1);
+
 	if (_sceneToggle)
 		glBindTexture(GL_TEXTURE_CUBE_MAP, _planetCubemap);
 	else
 		glBindTexture(GL_TEXTURE_CUBE_MAP, _cubeMap);
+
+	Matrix4 viewNoTranslation = viewMatrix;
+	viewNoTranslation.values[12] = 0;
+	viewNoTranslation.values[13] = 0;
+	viewNoTranslation.values[14] = 0;
+
+	viewMatrix = viewNoTranslation;
+	modelMatrix.ToIdentity();
+	textureMatrix.ToIdentity();
 	UpdateShaderMatrices();
+
 	_quad->Draw();
+
 	glDepthMask(GL_TRUE);
 }

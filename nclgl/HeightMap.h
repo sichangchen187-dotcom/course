@@ -7,6 +7,7 @@ public:
 	~HeightMap();
 
 	Vector3 getHeightmapSize() const;
+
 protected:
 	Vector3 _heightMapSize;
 };
