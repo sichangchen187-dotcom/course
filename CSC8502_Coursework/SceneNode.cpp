@@ -165,8 +165,11 @@ void SceneNode::addChild(SceneNode* child) {
 
 void SceneNode::removeChild(SceneNode* child) {
 	for (int i = 0; i < _children.size(); i++) {
-		if (_children[i] == child)
+		if (_children[i] == child) {
 			_children.erase(_children.begin() + i);
+			child->_parent = nullptr;  
+			return;
+		}
 	}
 }
 

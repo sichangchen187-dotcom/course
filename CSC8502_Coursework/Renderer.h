@@ -24,7 +24,7 @@ public:
 protected:
 	bool _sceneToggle = false;
 	bool _isBlurOn = false;
-
+	int _currentScene = 1;
 	float _waterCycle = 0.0f;
 	float _waterRotate = 0.0f;
 
@@ -81,7 +81,24 @@ protected:
 	Frustum _frameFrustum;
 
 	HeightMap* _heightMap;
+	SceneNode* _planetRoot2;
 
+	HeightMap* _heightMap2;
+
+	GLuint _planetCubemap2;
+
+	GLuint _heightMapTexture2;
+	GLuint _bumpTexture2;
+
+	GLuint _treeTexture2;
+	GLuint _treeBumpTex2;
+
+	GLuint _lowPolyTex2;
+	GLuint _lowPolyBumpTex2;
+
+	GLuint _rainTexture2;
+
+	Light* _light2;
 
 	std::vector<Vector3> _planetSceneCameraNodesToVisit;
 	std::vector<Vector3> _spaceSceneCameraNodesToVisit;
@@ -96,7 +113,8 @@ protected:
 	void initBuffers();
 	void initShaders();
 
-
+	void InitPlanetSceneNodes2();   
+	void initTextures2();          
 	void buildNodeLists(SceneNode* nodeToBuild);
 	void sortNodeLists();
 	void drawNodes(bool isDrawingForShadows = false);
